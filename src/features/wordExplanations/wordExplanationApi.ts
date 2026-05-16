@@ -12,3 +12,15 @@ export function explainWord(documentId: number, request: ExplainWordRequest) {
 export function listWordExplanations(documentId: number) {
   return httpClient.get(`texts/${documentId}/explanations`).json<WordExplanationHistoryItem[]>()
 }
+
+export function updateWordExplanation(
+  documentId: number,
+  explanationId: number,
+  explanation: string,
+) {
+  return httpClient
+    .post(`texts/${documentId}/explanations/${explanationId}`, {
+      json: { explanation },
+    })
+    .json<WordExplanationHistoryItem>()
+}

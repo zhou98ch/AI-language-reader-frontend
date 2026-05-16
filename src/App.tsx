@@ -4,7 +4,11 @@ import {
   getTextDocument,
   listTextDocuments,
 } from './features/textDocuments/textDocumentApi'
-import { explainWord, listWordExplanations } from './features/wordExplanations/wordExplanationApi'
+import {
+  explainWord,
+  listWordExplanations,
+  updateWordExplanation,
+} from './features/wordExplanations/wordExplanationApi'
 import type {
   ExplainWordResponse,
   WordExplanationHistoryItem,
@@ -29,6 +33,9 @@ function App() {
   const [explanation, setExplanation] = useState<ExplainWordResponse | null>(null)
   const [explanationHistory, setExplanationHistory] = useState<WordExplanationHistoryItem[]>([])
   const [isExplaining, setIsExplaining] = useState(false)
+  const [editingExplanationId, setEditingExplanationId] = useState<number | null>(null)
+  const [editingExplanationText, setEditingExplanationText] = useState('')
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
   const activeDocumentTokens = useMemo(
     () => tokenizeText(activeDocument?.content ?? ''),
     [activeDocument?.content],
@@ -109,7 +116,43 @@ function App() {
     setSelectedToken(token)
     setExplanation(null)
     setPrompt('')
+    setEditingExplanationId(null)
+    setEditingExplanationText('')
     void requestExplanation(token, '')
+  }
+
+  function startEditingExplanation(item: WordExplanationHistoryItem) {
+    setEditingExplanationId(item.id)
+    setEditingExplanationText(item.explanation)
+  }
+
+  async function saveExplanationEdit(item: WordExplanationHistoryItem) {
+    if (!activeDocument) {
+      return
+    }
+
+    setError('')
+    setIsSavingEdit(true)
+
+    try {
+      const updated = await updateWordExplanation(
+        activeDocument.id,
+        item.id,
+        editingExplanationText,
+      )
+
+      setExplanationHistory((currentHistory) =>
+        currentHistory.map((historyItem) =>
+          historyItem.id === updated.id ? updated : historyItem,
+        ),
+      )
+      setEditingExplanationId(null)
+      setEditingExplanationText('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update explanation')
+    } finally {
+      setIsSavingEdit(false)
+    }
   }
 
   const selectedTokenHistory =
@@ -202,7 +245,46 @@ function App() {
                           <span>{item.provider}</span>
                           <span>{new Date(item.createdAt).toLocaleString()}</span>
                         </div>
-                        <p>{item.explanation}</p>
+                        {editingExplanationId === item.id ? (
+                          <>
+                            <textarea
+                              className="history-edit-input"
+                              value={editingExplanationText}
+                              onChange={(event) => setEditingExplanationText(event.target.value)}
+                            />
+                            <div className="history-edit-actions">
+                              <button
+                                type="button"
+                                disabled={isSavingEdit}
+                                onClick={() => void saveExplanationEdit(item)}
+                              >
+                                {isSavingEdit ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                disabled={isSavingEdit}
+                                onClick={() => {
+                                  setEditingExplanationId(null)
+                                  setEditingExplanationText('')
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p>{item.explanation}</p>
+                            <button
+                              type="button"
+                              className="small-secondary-button"
+                              onClick={() => startEditingExplanation(item)}
+                            >
+                              Edit
+                            </button>
+                          </>
+                        )}
                       </article>
                     ))
                   )}

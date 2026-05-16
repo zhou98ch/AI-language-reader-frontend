@@ -227,6 +227,26 @@ button:disabled {
   color: #1f2937;
 }
 
+.small-secondary-button {
+  min-height: 30px;
+  margin-top: 10px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.history-edit-input {
+  min-height: 150px;
+  margin-top: 10px;
+}
+
+.history-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .history-meta {
   display: flex;
   justify-content: space-between;
