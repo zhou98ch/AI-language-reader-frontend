@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createTextDocument,
   getTextDocument,
   listTextDocuments,
 } from './features/textDocuments/textDocumentApi'
+import { explainWord } from './features/wordExplanations/wordExplanationApi'
+import type { ExplainWordResponse } from './features/wordExplanations/types'
+import { getSentenceContext, tokenizeText, type TextToken } from './shared/helpers/tokenizeText'
 import type { TextDocument, TextDocumentSummary } from './features/textDocuments/types'
 import './App.css'
 
@@ -17,6 +20,15 @@ function App() {
   const [savedDocumentId, setSavedDocumentId] = useState<number | null>(null)
   const [documents, setDocuments] = useState<TextDocumentSummary[]>([])
   const [activeDocument, setActiveDocument] = useState<TextDocument | null>(null)
+  const [selectedToken, setSelectedToken] = useState<TextToken | null>(null)
+  const [provider, setProvider] = useState<'fake-testing' | 'gemini'>('gemini')
+  const [prompt, setPrompt] = useState('')
+  const [explanation, setExplanation] = useState<ExplainWordResponse | null>(null)
+  const [isExplaining, setIsExplaining] = useState(false)
+  const activeDocumentTokens = useMemo(
+    () => tokenizeText(activeDocument?.content ?? ''),
+    [activeDocument?.content],
+  )
 
   async function loadDocuments() {
     try {
@@ -53,9 +65,45 @@ function App() {
 
     try {
       setActiveDocument(await getTextDocument(id))
+      setSelectedToken(null)
+      setExplanation(null)
+      setPrompt('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open text')
     }
+  }
+
+  async function requestExplanation(token: TextToken, promptValue: string) {
+    if (!activeDocument) {
+      return
+    }
+
+    setError('')
+    setIsExplaining(true)
+
+    try {
+      setExplanation(
+        await explainWord(activeDocument.id, {
+          word: token.text,
+          context: getSentenceContext(activeDocument.content, token.startOffset, token.endOffset),
+          startOffset: token.startOffset,
+          endOffset: token.endOffset,
+          provider,
+          prompt: promptValue.trim() || undefined,
+        }),
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to explain word')
+    } finally {
+      setIsExplaining(false)
+    }
+  }
+
+  function selectToken(token: TextToken) {
+    setSelectedToken(token)
+    setExplanation(null)
+    setPrompt('')
+    void requestExplanation(token, '')
   }
 
   useEffect(() => {
@@ -77,8 +125,66 @@ function App() {
           </div>
         </header>
 
-        <section className="panel reader-panel">
-          <p className="reader-text">{activeDocument.content}</p>
+        <section className="reader-layout">
+          <div className="panel reader-panel">
+            <div className="reader-text">
+              {activeDocumentTokens.map((token) =>
+                token.isWord ? (
+                  <button
+                    type="button"
+                    className={`token ${selectedToken?.startOffset === token.startOffset ? 'selected' : ''}`}
+                    key={`${token.startOffset}-${token.endOffset}`}
+                    onClick={() => selectToken(token)}
+                  >
+                    {token.text}
+                  </button>
+                ) : (
+                  <span key={`${token.startOffset}-${token.endOffset}`}>{token.text}</span>
+                ),
+              )}
+            </div>
+          </div>
+
+          <aside className="panel explanation-panel">
+            <h2>Explanation</h2>
+
+            {selectedToken ? (
+              <>
+                <div className="selected-word">
+                  <strong>{selectedToken.text}</strong>
+                  <span>{isExplaining ? 'Explaining...' : explanation?.cached ? 'cached' : 'new'}</span>
+                </div>
+
+                <label>
+                  Provider
+                  <select value={provider} onChange={(event) => setProvider(event.target.value as 'fake-testing' | 'gemini')}>
+                    <option value="gemini">Gemini</option>
+                    <option value="fake">Fake</option>
+                  </select>
+                </label>
+
+                <label>
+                  Prompt
+                  <textarea
+                    className="prompt-input"
+                    placeholder="Optional: ask for Chinese explanation, examples, grammar notes..."
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                  />
+                </label>
+
+                <button type="button" disabled={isExplaining} onClick={() => requestExplanation(selectedToken, prompt)}>
+                  {isExplaining ? 'Explaining...' : 'Explain again'}
+                </button>
+
+                {explanation && <p className="explanation-text">{explanation.explanation}</p>}
+              </>
+            ) : (
+              <p className="empty-state">Select a word to generate an explanation.</p>
+            )}
+
+            {error && <p className="error-message">{error}</p>}
+          </aside>
         </section>
       </main>
     )
