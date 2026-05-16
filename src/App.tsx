@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { createTextDocument, listTextDocuments } from './features/textDocuments/textDocumentApi'
-import type { TextDocumentSummary } from './features/textDocuments/types'
+import {
+  createTextDocument,
+  getTextDocument,
+  listTextDocuments,
+} from './features/textDocuments/textDocumentApi'
+import type { TextDocument, TextDocumentSummary } from './features/textDocuments/types'
 import './App.css'
 
 function App() {
@@ -12,6 +16,7 @@ function App() {
   const [error, setError] = useState('')
   const [savedDocumentId, setSavedDocumentId] = useState<number | null>(null)
   const [documents, setDocuments] = useState<TextDocumentSummary[]>([])
+  const [activeDocument, setActiveDocument] = useState<TextDocument | null>(null)
 
   async function loadDocuments() {
     try {
@@ -35,6 +40,7 @@ function App() {
 
       setSavedDocumentId(document.id)
       await loadDocuments()
+      await openDocument(document.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save text')
     } finally {
@@ -42,9 +48,41 @@ function App() {
     }
   }
 
+  async function openDocument(id: number) {
+    setError('')
+
+    try {
+      setActiveDocument(await getTextDocument(id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open text')
+    }
+  }
+
   useEffect(() => {
     void loadDocuments()
   }, [])
+
+  if (activeDocument) {
+    return (
+      <main className="page">
+        <header className="page-header reader-page-header">
+          <button type="button" className="secondary-button" onClick={() => setActiveDocument(null)}>
+            Back
+          </button>
+          <div>
+            <h1>{activeDocument.title}</h1>
+            <p>
+              Document #{activeDocument.id} - {activeDocument.sourceType} - {activeDocument.language}
+            </p>
+          </div>
+        </header>
+
+        <section className="panel reader-panel">
+          <p className="reader-text">{activeDocument.content}</p>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="page">
@@ -93,7 +131,12 @@ function App() {
           ) : (
             <div className="document-list">
               {documents.map((document) => (
-                <button type="button" className="document-row" key={document.id}>
+                <button
+                  type="button"
+                  className="document-row"
+                  key={document.id}
+                  onClick={() => void openDocument(document.id)}
+                >
                   <span>{document.title}</span>
                   <small>
                     #{document.id} - {document.sourceType}

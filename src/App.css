@@ -89,6 +89,11 @@ button:disabled {
   opacity: 0.55;
 }
 
+.secondary-button {
+  background: #ffffff;
+  color: #1f2937;
+}
+
 .success-message {
   margin: 14px 0 0;
   color: #067647;
@@ -127,6 +132,24 @@ button:disabled {
 
 .document-row small {
   color: #667085;
+}
+
+.reader-page-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.reader-panel {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.reader-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #1f2937;
 }
 
 @media (max-width: 900px) {

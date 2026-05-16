@@ -7,6 +7,11 @@ export type TextDocumentSummary = {
   createdAt: string
 }
 
+export type TextDocument = TextDocumentSummary & {
+  content: string
+  language: string
+}
+
 export type CreateTextDocumentRequest = {
   title: string
   content: string
