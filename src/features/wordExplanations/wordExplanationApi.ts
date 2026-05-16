@@ -1,5 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient'
-import type { ExplainWordRequest, ExplainWordResponse } from './types'
+import type { ExplainWordRequest, ExplainWordResponse, WordExplanationHistoryItem } from './types'
 
 export function explainWord(documentId: number, request: ExplainWordRequest) {
   return httpClient
@@ -7,4 +7,8 @@ export function explainWord(documentId: number, request: ExplainWordRequest) {
       json: request,
     })
     .json<ExplainWordResponse>()
+}
+
+export function listWordExplanations(documentId: number) {
+  return httpClient.get(`texts/${documentId}/explanations`).json<WordExplanationHistoryItem[]>()
 }

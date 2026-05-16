@@ -4,8 +4,11 @@ import {
   getTextDocument,
   listTextDocuments,
 } from './features/textDocuments/textDocumentApi'
-import { explainWord } from './features/wordExplanations/wordExplanationApi'
-import type { ExplainWordResponse } from './features/wordExplanations/types'
+import { explainWord, listWordExplanations } from './features/wordExplanations/wordExplanationApi'
+import type {
+  ExplainWordResponse,
+  WordExplanationHistoryItem,
+} from './features/wordExplanations/types'
 import { getSentenceContext, tokenizeText, type TextToken } from './shared/helpers/tokenizeText'
 import type { TextDocument, TextDocumentSummary } from './features/textDocuments/types'
 import './App.css'
@@ -21,9 +24,10 @@ function App() {
   const [documents, setDocuments] = useState<TextDocumentSummary[]>([])
   const [activeDocument, setActiveDocument] = useState<TextDocument | null>(null)
   const [selectedToken, setSelectedToken] = useState<TextToken | null>(null)
-  const [provider, setProvider] = useState<'fake-testing' | 'gemini'>('gemini')
+  const [provider, setProvider] = useState<'fake' | 'gemini'>('gemini')
   const [prompt, setPrompt] = useState('')
   const [explanation, setExplanation] = useState<ExplainWordResponse | null>(null)
+  const [explanationHistory, setExplanationHistory] = useState<WordExplanationHistoryItem[]>([])
   const [isExplaining, setIsExplaining] = useState(false)
   const activeDocumentTokens = useMemo(
     () => tokenizeText(activeDocument?.content ?? ''),
@@ -65,6 +69,7 @@ function App() {
 
     try {
       setActiveDocument(await getTextDocument(id))
+      setExplanationHistory(await listWordExplanations(id))
       setSelectedToken(null)
       setExplanation(null)
       setPrompt('')
@@ -82,16 +87,17 @@ function App() {
     setIsExplaining(true)
 
     try {
-      setExplanation(
-        await explainWord(activeDocument.id, {
+      const result = await explainWord(activeDocument.id, {
           word: token.text,
           context: getSentenceContext(activeDocument.content, token.startOffset, token.endOffset),
           startOffset: token.startOffset,
           endOffset: token.endOffset,
           provider,
           prompt: promptValue.trim() || undefined,
-        }),
-      )
+        })
+
+      setExplanation(result)
+      setExplanationHistory(await listWordExplanations(activeDocument.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to explain word')
     } finally {
@@ -105,6 +111,14 @@ function App() {
     setPrompt('')
     void requestExplanation(token, '')
   }
+
+  const selectedTokenHistory =
+    selectedToken === null
+      ? []
+      : explanationHistory.filter(
+          (item) =>
+            item.startOffset === selectedToken.startOffset && item.endOffset === selectedToken.endOffset,
+        )
 
   useEffect(() => {
     void loadDocuments()
@@ -157,7 +171,7 @@ function App() {
 
                 <label>
                   Provider
-                  <select value={provider} onChange={(event) => setProvider(event.target.value as 'fake-testing' | 'gemini')}>
+                  <select value={provider} onChange={(event) => setProvider(event.target.value as 'fake' | 'gemini')}>
                     <option value="gemini">Gemini</option>
                     <option value="fake">Fake</option>
                   </select>
@@ -177,7 +191,22 @@ function App() {
                   {isExplaining ? 'Explaining...' : 'Explain again'}
                 </button>
 
-                {explanation && <p className="explanation-text">{explanation.explanation}</p>}
+                <div className="history-list">
+                  <h3>History</h3>
+                  {selectedTokenHistory.length === 0 ? (
+                    <p className="empty-state">No saved explanations for this word yet.</p>
+                  ) : (
+                    selectedTokenHistory.map((item) => (
+                      <article className="history-item" key={item.id}>
+                        <div className="history-meta">
+                          <span>{item.provider}</span>
+                          <span>{new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p>{item.explanation}</p>
+                      </article>
+                    ))
+                  )}
+                </div>
               </>
             ) : (
               <p className="empty-state">Select a word to generate an explanation.</p>
