@@ -1,5 +1,9 @@
 import { httpClient } from '../../shared/api/httpClient'
-import type { CreateTextDocumentRequest, CreateTextDocumentResponse } from './types'
+import type {
+  CreateTextDocumentRequest,
+  CreateTextDocumentResponse,
+  TextDocumentSummary,
+} from './types'
 
 export function createTextDocument(request: CreateTextDocumentRequest) {
   return httpClient
@@ -7,4 +11,8 @@ export function createTextDocument(request: CreateTextDocumentRequest) {
       json: request,
     })
     .json<CreateTextDocumentResponse>()
+}
+
+export function listTextDocuments() {
+  return httpClient.get('texts').json<TextDocumentSummary[]>()
 }

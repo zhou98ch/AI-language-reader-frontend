@@ -104,6 +104,31 @@ button:disabled {
   color: #98a2b3;
 }
 
+.document-list {
+  display: grid;
+  gap: 10px;
+}
+
+.document-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px;
+  text-align: left;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #dde2ea;
+}
+
+.document-row:hover {
+  border-color: #2563eb;
+}
+
+.document-row small {
+  color: #667085;
+}
+
 @media (max-width: 900px) {
   .page {
     padding: 18px;

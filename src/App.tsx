@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { createTextDocument } from './features/textDocuments/textDocumentApi'
+import { useEffect, useState } from 'react'
+import { createTextDocument, listTextDocuments } from './features/textDocuments/textDocumentApi'
+import type { TextDocumentSummary } from './features/textDocuments/types'
 import './App.css'
 
 function App() {
@@ -10,6 +11,15 @@ function App() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedDocumentId, setSavedDocumentId] = useState<number | null>(null)
+  const [documents, setDocuments] = useState<TextDocumentSummary[]>([])
+
+  async function loadDocuments() {
+    try {
+      setDocuments(await listTextDocuments())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load saved texts')
+    }
+  }
 
   async function saveText() {
     setIsSaving(true)
@@ -24,12 +34,17 @@ function App() {
       })
 
       setSavedDocumentId(document.id)
+      await loadDocuments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save text')
     } finally {
       setIsSaving(false)
     }
   }
+
+  useEffect(() => {
+    void loadDocuments()
+  }, [])
 
   return (
     <main className="page">
@@ -73,7 +88,20 @@ function App() {
 
         <div className="panel">
           <h2>Saved Texts</h2>
-          <p className="empty-state">No saved texts loaded yet.</p>
+          {documents.length === 0 ? (
+            <p className="empty-state">No saved texts yet.</p>
+          ) : (
+            <div className="document-list">
+              {documents.map((document) => (
+                <button type="button" className="document-row" key={document.id}>
+                  <span>{document.title}</span>
+                  <small>
+                    #{document.id} - {document.sourceType}
+                  </small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>
