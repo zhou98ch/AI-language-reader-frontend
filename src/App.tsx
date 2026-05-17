@@ -85,7 +85,11 @@ function App() {
     }
   }
 
-  async function requestExplanation(token: TextToken, promptValue: string) {
+  async function requestExplanation(
+    token: TextToken,
+    promptValue: string,
+    explanationType: 'INLINE_EXPLANATION' | 'CUSTOM_PROMPT',
+  ) {
     if (!activeDocument) {
       return
     }
@@ -100,6 +104,7 @@ function App() {
           startOffset: token.startOffset,
           endOffset: token.endOffset,
           provider,
+          explanationType,
           prompt: promptValue.trim() || undefined,
         })
 
@@ -118,7 +123,7 @@ function App() {
     setPrompt('')
     setEditingExplanationId(null)
     setEditingExplanationText('')
-    void requestExplanation(token, '')
+    void requestExplanation(token, '', 'INLINE_EXPLANATION')
   }
 
   function startEditingExplanation(item: WordExplanationHistoryItem) {
@@ -135,6 +140,10 @@ function App() {
     setIsSavingEdit(true)
 
     try {
+      if (item.explanationType === 'INLINE_EXPLANATION' && editingExplanationText.length > 40) {
+        throw new Error('Inline explanation must be 40 characters or fewer')
+      }
+
       const updated = await updateWordExplanation(
         activeDocument.id,
         item.id,
@@ -160,8 +169,33 @@ function App() {
       ? []
       : explanationHistory.filter(
           (item) =>
-            item.startOffset === selectedToken.startOffset && item.endOffset === selectedToken.endOffset,
+            item.startOffset === selectedToken.startOffset &&
+            item.endOffset === selectedToken.endOffset &&
+            item.explanationType === 'CUSTOM_PROMPT',
         )
+
+  const inlineExplanationsByToken = useMemo(() => {
+    const result = new Map<string, WordExplanationHistoryItem>()
+
+    for (const item of explanationHistory) {
+      if (item.explanationType !== 'INLINE_EXPLANATION') {
+        continue
+      }
+
+      const key = `${item.startOffset}-${item.endOffset}`
+
+      if (!result.has(key)) {
+        result.set(key, item)
+      }
+    }
+
+    return result
+  }, [explanationHistory])
+
+  const selectedInlineExplanation =
+    selectedToken === null
+      ? null
+      : inlineExplanationsByToken.get(`${selectedToken.startOffset}-${selectedToken.endOffset}`) ?? null
 
   useEffect(() => {
     void loadDocuments()
@@ -185,8 +219,10 @@ function App() {
         <section className="reader-layout">
           <div className="panel reader-panel">
             <div className="reader-text">
-              {activeDocumentTokens.map((token) =>
-                token.isWord ? (
+              {activeDocumentTokens.map((token) => {
+                const inlineExplanation = inlineExplanationsByToken.get(`${token.startOffset}-${token.endOffset}`)
+
+                return token.isWord ? (
                   <button
                     type="button"
                     className={`token ${selectedToken?.startOffset === token.startOffset ? 'selected' : ''}`}
@@ -194,11 +230,14 @@ function App() {
                     onClick={() => selectToken(token)}
                   >
                     {token.text}
+                    {inlineExplanation && (
+                      <span className="inline-explanation">({inlineExplanation.explanation})</span>
+                    )}
                   </button>
                 ) : (
                   <span key={`${token.startOffset}-${token.endOffset}`}>{token.text}</span>
-                ),
-              )}
+                )
+              })}
             </div>
           </div>
 
@@ -211,6 +250,56 @@ function App() {
                   <strong>{selectedToken.text}</strong>
                   <span>{isExplaining ? 'Explaining...' : explanation?.cached ? 'cached' : 'new'}</span>
                 </div>
+
+                {selectedInlineExplanation && (
+                  <div className="inline-editor">
+                    <div className="inline-editor-header">
+                      <span>Inline explanation</span>
+                      {editingExplanationId !== selectedInlineExplanation.id && (
+                        <button
+                          type="button"
+                          className="small-secondary-button"
+                          onClick={() => startEditingExplanation(selectedInlineExplanation)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+
+                    {editingExplanationId === selectedInlineExplanation.id ? (
+                      <>
+                        <input
+                          value={editingExplanationText}
+                          maxLength={40}
+                          onChange={(event) => setEditingExplanationText(event.target.value)}
+                        />
+                        <div className="character-count">{editingExplanationText.length}/40</div>
+                        <div className="history-edit-actions">
+                          <button
+                            type="button"
+                            disabled={isSavingEdit}
+                            onClick={() => void saveExplanationEdit(selectedInlineExplanation)}
+                          >
+                            {isSavingEdit ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={isSavingEdit}
+                            onClick={() => {
+                              setEditingExplanationId(null)
+                              setEditingExplanationText('')
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <p>{selectedInlineExplanation.explanation}</p>
+                    )}
+                  </div>
+                )}
 
                 <label>
                   Provider
@@ -230,7 +319,11 @@ function App() {
                   />
                 </label>
 
-                <button type="button" disabled={isExplaining} onClick={() => requestExplanation(selectedToken, prompt)}>
+                <button
+                  type="button"
+                  disabled={isExplaining}
+                  onClick={() => requestExplanation(selectedToken, prompt, 'CUSTOM_PROMPT')}
+                >
                   {isExplaining ? 'Explaining...' : 'Explain again'}
                 </button>
 
@@ -249,6 +342,7 @@ function App() {
                           <>
                             <textarea
                               className="history-edit-input"
+                              maxLength={item.explanationType === 'INLINE_EXPLANATION' ? 40 : undefined}
                               value={editingExplanationText}
                               onChange={(event) => setEditingExplanationText(event.target.value)}
                             />
