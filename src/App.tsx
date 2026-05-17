@@ -13,6 +13,7 @@ import type {
   ExplainWordResponse,
   WordExplanationHistoryItem,
 } from './features/wordExplanations/types'
+import { getApiErrorMessage } from './shared/api/apiError'
 import { getSentenceContext, tokenizeText, type TextToken } from './shared/helpers/tokenizeText'
 import type { TextDocument, TextDocumentSummary } from './features/textDocuments/types'
 import './App.css'
@@ -45,7 +46,7 @@ function App() {
     try {
       setDocuments(await listTextDocuments())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load saved texts')
+      setError(await getApiErrorMessage(err, 'Failed to load saved texts'))
     }
   }
 
@@ -65,7 +66,7 @@ function App() {
       await loadDocuments()
       await openDocument(document.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save text')
+      setError(await getApiErrorMessage(err, 'Failed to save text'))
     } finally {
       setIsSaving(false)
     }
@@ -81,7 +82,7 @@ function App() {
       setExplanation(null)
       setPrompt('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open text')
+      setError(await getApiErrorMessage(err, 'Failed to open text'))
     }
   }
 
@@ -111,7 +112,7 @@ function App() {
       setExplanation(result)
       setExplanationHistory(await listWordExplanations(activeDocument.id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to explain word')
+      setError(await getApiErrorMessage(err, 'Failed to explain word'))
     } finally {
       setIsExplaining(false)
     }
@@ -158,7 +159,7 @@ function App() {
       setEditingExplanationId(null)
       setEditingExplanationText('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update explanation')
+      setError(await getApiErrorMessage(err, 'Failed to update explanation'))
     } finally {
       setIsSavingEdit(false)
     }
