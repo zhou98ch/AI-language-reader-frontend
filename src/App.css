@@ -41,6 +41,24 @@
   font-size: 20px;
 }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.panel-header span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 label {
   display: grid;
   gap: 8px;
@@ -111,15 +129,17 @@ button:disabled {
 
 .document-list {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .document-row {
   display: grid;
-  gap: 4px;
+  align-content: space-between;
+  gap: 18px;
   width: 100%;
-  min-height: 64px;
-  padding: 12px;
+  min-height: 132px;
+  padding: 14px;
   text-align: left;
   background: #ffffff;
   color: #1f2937;
@@ -132,6 +152,33 @@ button:disabled {
 
 .document-row small {
   color: #667085;
+}
+
+.document-title {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 44px;
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.document-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.document-meta small {
+  padding: 3px 7px;
+  border: 1px solid #dde2ea;
+  border-radius: 999px;
+  background: #f7f8fb;
+  color: #667085;
+  font-size: 12px;
 }
 
 .reader-page-header {

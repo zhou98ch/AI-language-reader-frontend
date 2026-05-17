@@ -436,7 +436,10 @@ function App() {
         </div>
 
         <div className="panel">
-          <h2>Saved Texts</h2>
+          <div className="panel-header">
+            <h2>Saved Texts</h2>
+            <span>{documents.length} total</span>
+          </div>
           {documents.length === 0 ? (
             <p className="empty-state">No saved texts yet.</p>
           ) : (
@@ -448,10 +451,11 @@ function App() {
                   key={document.id}
                   onClick={() => void openDocument(document.id)}
                 >
-                  <span>{document.title}</span>
-                  <small>
-                    #{document.id} - {document.sourceType}
-                  </small>
+                  <span className="document-title">{document.title}</span>
+                  <span className="document-meta">
+                    <small>#{document.id}</small>
+                    <small>{document.sourceType}</small>
+                  </span>
                 </button>
               ))}
             </div>
